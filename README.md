@@ -1,2 +1,2 @@
-# CUA_MWEs
-The code of MWEs
+# MWEIs
+The code is for indentification of Multiwords Expressions.
