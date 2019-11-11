@@ -105,3 +105,6 @@ venv.bak/
 
 *.zip
 .DS_Store
+*.asta
+*.asta.lock
+/records
