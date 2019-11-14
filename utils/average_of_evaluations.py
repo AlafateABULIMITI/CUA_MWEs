@@ -28,6 +28,11 @@ parser.add_argument("evaluation_files", nargs='+', type=argparse.FileType('r'),
         help="""Files that were produced as output of evaluate.py""")
 
 
+def format_float(value: float):
+    r"""Return pretty-formatted float."""
+    return "{:.4f}".format(value)
+
+
 class Main(object):
     def __init__(self, args):
         self.args = args
@@ -54,7 +59,7 @@ class Main(object):
                     if self.args.operation in ['avg', 'avg+stddev']:
                         # Re-calculate F1 based on precision and recall
                         prec, recall = [float(v.split('=')[-1].split('(')[0]) for v in merged[:2]]
-                        merged[-1] = "{:g}".format((2*prec*recall)/((prec+recall) or 1))
+                        merged[-1] = format_float((2*prec*recall)/((prec+recall) or 1))
 
                 statnames = [s.statname for s in parallel_statlines[0].stats]
                 pairs = zip(statnames, merged)
@@ -79,17 +84,17 @@ class Main(object):
         scores = [float(stat.score) for stat in stats]
         if self.args.operation == 'avg':
             avg = sum(scores) / len(scores)
-            return "{:g}".format(avg)
+            return format_float(avg)
         elif self.args.operation == 'avg+stddev':
             avg = sum(scores) / len(scores)
             sumsq = sum((s-avg)**2 for s in scores)
             # Bessel's N-1 correction for sample stddev:
             stddev = "inf"
             if len(scores) > 1:
-                stddev = "{:g}".format(math.sqrt(sumsq / (len(scores)-1 or 1)))
-            return "{:g}(±{})".format(avg, stddev)
+                stddev = format_float(math.sqrt(sumsq / (len(scores)-1 or 1)))
+            return "{}(±{})".format(format_float(avg), stddev)
         elif self.args.operation == 'list':
-            return "[" + ",".join("{:g}".format(s) for s in scores) + "]"
+            return "[" + ",".join(format_float(s) for s in scores) + "]"
         else:
             assert False
 
@@ -117,7 +122,7 @@ class Block:
 
 
 def parse_blocks(fileobj):
-    r"""Split data in fileobj into XXXXXXXXXX"""
+    r"""Split text data in fileobj into objects of type Block"""
     ret = fileobj.read().split("\n\n")
     return [Block(x) for x in ret if x]
 

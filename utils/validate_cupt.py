@@ -23,6 +23,10 @@ class Main:
         # NOTE: This code is ugly, and should be reworked to use tsvlib
         # in the future... For now, we'll keep it as it is...
 
+        # TODO: We should validate that two MWEs do not ever have the same
+        # set of tokens. Even if two MWEs have different category, if they
+        # have the same tokens, we should warn.
+
         with self.args.input as f:
             header = next(f)
             if not "global.columns =" in header:

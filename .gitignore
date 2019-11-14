@@ -108,3 +108,4 @@ venv.bak/
 *.asta
 *.asta.lock
 /records
+.vscode

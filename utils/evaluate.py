@@ -206,7 +206,7 @@ class Main(object):
             triples.append(["t{}".format(i+1),
                     ";".join(sorted(tok_g.mwe_codes())),
                     ";".join(sorted(tok_p_mwe_codes)),
-                    tok_g['FORM']])
+                    tok_g.get('FORM', '_')])
         print("DEBUG: +============================================================")
         for triple in triples:
             triple[0] = "{:<10}".format(triple[0])
@@ -317,7 +317,7 @@ class SeenInfo:
         r'''Return True iff `mweinfo` is a (non-)exact variant of an MWE seen in train.'''
         if not self._seen_in_train(mweinfo, seen_field_name):
             return False  # Can only be a (non-)exact variant if seen in train
-        field_with_span = mweinfo.field_including_span(variant_field_name)
+        field_with_span = mweinfo.field_including_span(variant_field_name, "FORM")
         return variantness != (field_with_span in self.mwe_spans[variant_field_name])
 
 
@@ -369,7 +369,7 @@ class MatchCounter:
 
         for map_gold, map_pred in inc.pairing.items():
             sentence = " ".join(GOLDPRED_FMT[(i in map_gold, i in map_pred)]
-                                .format(tok['FORM']) for i, tok in enumerate(sent.words, 1))
+                                .format(tok.get('FORM', '_')) for i, tok in enumerate(sent.words, 1))
             print("DEBUG: | {header} => MATCH gold/pred ({name}): {sentence}" \
                   .format(header=header, name=self.name, sentence=sentence))
         
@@ -377,7 +377,7 @@ class MatchCounter:
                                ("pred", {(frozenset(), p) for p in set(p_tokensets)-set(inc.pairing.values())})]:
             for g_ts, p_ts in pairs:
                 sentence = " ".join(GOLDPRED_FMT[(i in g_ts, i in p_ts)]
-                                    .format(tok['FORM']) for i, tok in enumerate(sent.words, 1))
+                                    .format(tok.get('FORM', '_')) for i, tok in enumerate(sent.words, 1))
                 print("DEBUG: | {header} => FAIL: ONLY {subname} ({name}): {sentence}" \
                       .format(subname=subname, header=header, name=self.name, sentence=sentence))
 
