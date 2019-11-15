@@ -1,10 +1,8 @@
-import argparse
 import os
 import sys
 
 sys.path.append("./utils")
 import tsvlib
-from pprint import pprint
 
 
 class Preprocessing:
@@ -20,6 +18,8 @@ class Preprocessing:
             sentence = " ".join(token["FORM"] for token in item.words)
             sentences.append(sentence)
         return sentences
+
+
 
 
 if __name__ == "__main__":
