@@ -247,7 +247,7 @@ if __name__ == "__main__":
     #             print("label length:\n", len(sent.labels), file=log)
     #             print("Vector shape:\n", vector.shape, file=log)
     pre = Preprocessing(cps)
-    save_to = "embedding"
+    save_to = "../data/train_seq2seq/train"
     pre.save_train(save_to)
     save_to = "data/train/vocabs.txt"
     # pre.save_vocabs(save_to)
