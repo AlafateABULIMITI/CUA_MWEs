@@ -122,11 +122,8 @@ venv.bak/
 # bert model
 /models/multi_cased_L-12_H-768_A-12
 
-# traininig file for seq2seq
-*.npy
-
 # test file
-test.py
+/mwei/test.py
 
 # tmp
 /tmp

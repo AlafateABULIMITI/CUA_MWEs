@@ -149,7 +149,6 @@ class Preprocessing:
         max_length = self.corpus.max_length_sent
         sentences = self.corpus.sentences
         bert = BertWordEmbedding()
-        # TODO 786 need to be parametered
         # train = np.empty((0, 53, 786))
         train = list()
         # print(embedding.shape)
@@ -163,7 +162,8 @@ class Preprocessing:
                         mode="constant",
                         constant_values=0,
                     )  # padding  0.
-                    # print(vector.shape)
+                    # for solving the broadcast problem
+                    labels = np.expand_dims(labels, axis=0)
                     vector = np.pad(
                         vector,
                         [(0, max_length - vector.shape[0]), (0, 0)],
@@ -247,9 +247,11 @@ if __name__ == "__main__":
     #             print("label length:\n", len(sent.labels), file=log)
     #             print("Vector shape:\n", vector.shape, file=log)
     pre = Preprocessing(cps)
-    save_to = "../data/train_seq2seq/train"
+    save_to = "../tmp/train_seq2seq/train"
     pre.save_train(save_to)
-    save_to = "data/train/vocabs.txt"
+    c = np.load("../tmp/train_seq2seq/train.npy", allow_pickle=True)
+    print(isinstance(c, list))
+    print(c[0][1])
     # pre.save_vocabs(save_to)
     # dic = pre.get_vocabs(save_to)
     # print(type(dic))
