@@ -176,8 +176,8 @@ class Preprocessing:
                     # train = np.concatenate((train, vector), axis=0)
         # print(embedding.shape)
         # TODO show to the prof.
-        with open("../tmp/log_embedding.txt", "w+") as f:
-            print(train, file=f)
+        # with open("../tmp/log_embedding.txt", "w+") as f:
+        #     print(train, file=f)
 
         np.save(save_to, train)  # np.load(outfile, allow_pickle=True)
         return train

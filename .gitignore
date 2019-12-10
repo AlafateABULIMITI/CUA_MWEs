@@ -105,11 +105,28 @@ venv.bak/
 
 *.zip
 .DS_Store
+
+# asta files
 *.asta
 *.asta.lock
+
+# records files
 /records
+
+# vscode configuration
 .vscode
 
+# pytorch training files
 /experiment
 
+# bert model
 /models/multi_cased_L-12_H-768_A-12
+
+# traininig file for seq2seq
+*.npy
+
+# test file
+test.py
+
+# tmp
+/tmp
