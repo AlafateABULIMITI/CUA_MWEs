@@ -21,12 +21,14 @@ args = parser.parse_args()
 with args.input as f:
     sentences = list(tsvlib.iter_tsv_sentences(f))
     sum_len = 0
+    pos_set = set()
     for idx, sentence in enumerate(sentences):
+        for token in sentence.words:
+            pos_set.add(token.get("UPOS", "??"))
         print(f"-------------------------------\nline:{idx}")
         print("NEW SENTENCE")
         forms = " ".join(token["FORM"] for token in sentence.words)
         print("Text:", forms)
-
         first = sentence.words[0]
         len_ = len(sentence.words)
         sum_len += len_
@@ -56,5 +58,8 @@ with args.input as f:
             token["LEMMA"] = "modified"
     tsvlib.write_tsv(sentences[-3:], file=sys.stdout)
 
+
+
 avg_ = sum_len/len(sentences)
 print(f"avg of length of the sentences: {avg_}")
+print(pos_set)

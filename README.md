@@ -21,3 +21,6 @@ The code is for indentification of Multiwords Expressions.
 
 for more infos : [bert multilingual](https://github.com/google-research/bert/blob/master/multilingual.md)
 
+## Package
+
+It needs to install anaconda for create a python environment by package.sh

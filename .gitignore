@@ -109,3 +109,7 @@ venv.bak/
 *.asta.lock
 /records
 .vscode
+
+/experiment
+
+/models/multi_cased_L-12_H-768_A-12

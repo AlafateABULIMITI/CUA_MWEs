@@ -1,0 +1,6 @@
+matplotlib
+tensorflow=1.10.0
+pytorch
+bert-serving-server
+bert-serving-client
+torchtext
