@@ -7,3 +7,4 @@ conda install pytorch torchvision -c pytorch
 conda install -c pytorch torchtext
 pip install bert-serving-server # server
 pip install bert-serving-client # client, independent of `bert-serving-server`
+pip install conllu

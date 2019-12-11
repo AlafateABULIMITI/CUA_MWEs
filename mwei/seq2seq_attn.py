@@ -79,9 +79,10 @@ class AttnDecoderRNN(nn.Module):
 
 
 class Trainer:
-    def __init__(self, device):
+    def __init__(self, device, train):
         super(Trainer, self).__init__()
         self.device = device
+        self.train = train
 
     def show_plot(self, points):
         plt.figure()
@@ -128,9 +129,9 @@ class Trainer:
             encoder_outputs[ei] = encoder_output[0, 0]
 
         # TODO figure out sos_token
-        SOS_token = 0
-        decoder_input = torch.tensor([[SOS_token]], device=self.device)
-
+        # SOS_token = 0
+        # decoder_input = torch.tensor([[SOS_token]], device=self.device)
+        decoder_input = torch.tensor([[]], device=self.device)
         decoder_hidden = encoder_hidden
 
         # TODO explanation
@@ -155,10 +156,11 @@ class Trainer:
                 decoder_input = topi.squeeze().detach()
 
                 loss += criterion(decoder_output, target_tensor[di])
-                EOS_token = 1
+                # TODO: replace the EOS_token
+                # EOS_token = 1
                 # ! Tensor.item(): retrive a single number from a tensor
-                if decoder_input.item() == EOS_token:
-                    break
+                # if decoder_input.item() == EOS_token:
+                #     break
         loss.backward()
 
         encoder_optimizer.step()
@@ -166,8 +168,10 @@ class Trainer:
 
         return loss.item() / target_length
 
+    # TODO: integrate the train data to the main
     def train_iters(
         self,
+        train,
         encoder,
         decoder,
         n_iters,
