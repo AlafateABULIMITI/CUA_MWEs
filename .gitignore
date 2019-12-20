@@ -111,7 +111,7 @@ venv.bak/
 *.asta.lock
 
 # records files
-/records
+docs/records
 
 # vscode configuration
 .vscode
