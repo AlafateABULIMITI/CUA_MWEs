@@ -127,3 +127,6 @@ venv.bak/
 
 # tmp
 /tmp
+
+# training set vectors
+*.npy

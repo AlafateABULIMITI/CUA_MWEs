@@ -1,15 +1,16 @@
 import os
 import sys
-
+from pprint import pprint
 sys.path.append("./utils")
+
 import numpy as np
+from bert_serving.client import BertClient
+from bert_serving.server import BertServer
+
+import tsvlib
+from bert import BertWordEmbedding
 
 np.set_printoptions(threshold=sys.maxsize)
-import tsvlib
-from pprint import pprint
-from bert_serving.server import BertServer
-from bert_serving.client import BertClient
-from bert import BertWordEmbedding
 
 POS_DIC = {
     "ADJ": 0,
@@ -147,15 +148,20 @@ class Preprocessing:
 
     def save_train(self, save_to):
         max_length = self.corpus.max_length_sent
+        print(max_length)
+        length = len(self.corpus)
+        print(length)
         sentences = self.corpus.sentences
         bert = BertWordEmbedding()
         # train = np.empty((0, 53, 786))
         train = list()
         # print(embedding.shape)
+        counter = 0
         with BertServer(bert.start_args):
             with BertClient() as client:
                 for sent in sentences:
                     vector = sent.get_vector(client, bert)
+                    print(sent.labels)
                     labels = np.pad(
                         sent.labels,
                         (0, max_length - vector.shape[0]),
@@ -164,6 +170,8 @@ class Preprocessing:
                     )  # padding  0.
                     # for solving the broadcast problem
                     labels = np.expand_dims(labels, axis=0)
+                    print("trg_size:=============", labels.shape)
+                    break
                     vector = np.pad(
                         vector,
                         [(0, max_length - vector.shape[0]), (0, 0)],
@@ -171,16 +179,20 @@ class Preprocessing:
                         constant_values=0,
                     )  # padding  0.
                     train.append((vector, labels))
-                    # vector = np.expand_dims(vector, axis=0)
-                    # print(vector.shape)
-                    # train = np.concatenate((train, vector), axis=0)
+                    counter += 1
+                    print(f"sentence id:=================={counter}")
+                    if counter % 2000 == 0 or counter == length:
+                        print(f"training set{counter} is done ===========")
+                        save_to = save_to +"_"+ str(counter)
+                        np.save(save_to, train)
+                        train = list()
         # print(embedding.shape)
         # TODO show to the prof.
         # with open("../tmp/log_embedding.txt", "w+") as f:
         #     print(train, file=f)
-
-        np.save(save_to, train)  # np.load(outfile, allow_pickle=True)
-        return train
+        # print("training set is done ===========")
+        # np.save(save_to, train)  # np.load(outfile, allow_pickle=True)
+        # return train
 
     def save_vocabs(self, save_to):
         vocabs = self.corpus.vocabs
@@ -229,9 +241,8 @@ class Preprocessing:
 
 
 if __name__ == "__main__":
-    corpus = "../data/FR/train_test.cupt"
+    corpus = "../data/FR/train.cupt"
     cps = Corpus(corpus)
-    print(len(cps.vocabs))
     # print(cps.max_length_sent)
     # sentences = cps.sentences
     # bert = BertWordEmbedding()
@@ -247,13 +258,22 @@ if __name__ == "__main__":
     #             print("label length:\n", len(sent.labels), file=log)
     #             print("Vector shape:\n", vector.shape, file=log)
     pre = Preprocessing(cps)
-    save_to = "../tmp/train_seq2seq/train"
+    save_to = "../data/train_seq2seq/train"
     pre.save_train(save_to)
-    c = np.load("../tmp/train_seq2seq/train.npy", allow_pickle=True)
-    print(isinstance(c, list))
-    print(c[0][1])
+    # c = np.load("../tmp/train_seq2seq/train.npy", allow_pickle=True)
+
+    # print(c)
+    # print(len(c))
+    # print(c[1])
+    # print(type(c))
+    # print(type(c[1]))
+    # print(c.shape[0])
+    # print(c[0].shape)
+    # print(c[0][1].squeeze())
+    # print(c[0][1].squeeze().shape)
+    # print(c[0][1].shape)
+    # print(c[0][0].shape)
     # pre.save_vocabs(save_to)
     # dic = pre.get_vocabs(save_to)
     # print(type(dic))
     # print(dic)
-
