@@ -106,10 +106,6 @@ venv.bak/
 *.zip
 .DS_Store
 
-# asta files
-*.asta
-*.asta.lock
-
 # records files
 docs/records
 
@@ -130,3 +126,7 @@ docs/records
 
 # training set vectors
 *.npy
+alafat_aws.pem
+
+# model file
+*.h5

@@ -1,18 +1,21 @@
 import argparse
+import logging
 import math
 import random
 import sys
+import time
+import datetime
 
 import numpy as np
 import torch
 import torch.nn.functional as F
 from torch import nn, optim
 from torch.autograd import Variable
-from torch.nn.utils import clip_grad_norm
+from torch.nn.utils import clip_grad_norm_
 
 np.set_printoptions(threshold=sys.maxsize)
-
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+logging.getLogger().setLevel(logging.INFO)
 
 
 class Encoder(nn.Module):
@@ -55,11 +58,11 @@ class Attention(nn.Module):
         h = hidden.repeat(timestep, 1, 1).transpose(0, 1)
         encoder_outputs = encoder_outputs.transpose(0, 1)  # [B*T*H]
         attn_energies = self.score(h, encoder_outputs)
-        return F.relu(attn_energies, dim=1).unsqueeze(1)
+        return F.relu(attn_energies).unsqueeze(1)
 
     def score(self, hidden, encoder_outputs):
         # [B*T*2H]->[B*T*H]
-        energy = F.softmax(self.attn(torch.cat([hidden, encoder_outputs], 2)))
+        energy = F.softmax(self.attn(torch.cat([hidden, encoder_outputs], dim=2)))
         energy = energy.transpose(1, 2)  # [B*H*T]
         v = self.v.repeat(encoder_outputs.size(0), 1).unsqueeze(1)  # [B*1*H]
         energy = torch.bmm(v, energy)  # [B*1*T]
@@ -85,17 +88,24 @@ class Decoder(nn.Module):
         )
         self.out = nn.Linear(hidden_size * 2, output_size)
 
-    def forward(self, input, last_hidden, encoder_outputs):
+    def forward(self, input_, last_hidden, encoder_outputs):
         # Get the embedding of the current input word (last output word)
         # embedded = self.embed(input).unsqueeze(0)  # (1,B,N)
         # embedded = self.dropout(embedded)
-        embedded = self.dropout(input)
+        embedded = self.dropout(input_)
+        # print(embedded.size())
         # Calculate attention weights and apply to encoder outputs
         attn_weights = self.attention(last_hidden[-1], encoder_outputs)
+        # print(attn_weights.size())
         context = attn_weights.bmm(encoder_outputs.transpose(0, 1))  # (B,1,N)
+        #print(context.size())
         context = context.transpose(0, 1)  # (1,B,N)
+        print(context.size())
         # Combine embedded input word and attended context, run through RNN
-        rnn_input = torch.cat([embedded, context], 2)
+        print(embedded.size())
+        # ! Context vector construction
+        rnn_input = torch.cat([embedded, context])
+        print(rnn_input)
         output, hidden = self.gru(rnn_input, last_hidden)
         output = output.squeeze(0)  # (1,B,N) -> (B,N)
         context = context.squeeze(0)
@@ -111,17 +121,22 @@ class Seq2Seq(nn.Module):
         self.decoder = decoder
 
     def forward(self, src, trg, teacher_forcing_ratio=0.5):
+        # print(trg)
         batch_size = src.size(1)
+        # print(batch_size)
         max_len = trg.size(0)
+        # print(max_len)
         vocab_size = self.decoder.output_size
         outputs = Variable(torch.zeros(max_len, batch_size, vocab_size)).to(device)
-
         encoder_output, hidden = self.encoder(src)
-
+        # print(encoder_output)
         hidden = hidden[: self.decoder.n_layers]
-        output = Variable(trg.data[0, :])  # sos
-        for t in range(1, max_len):
+        output = Variable(trg.data[0, :])
+        # print(trg.data.size()) # sos
+        # print(output.size())
+        for t in range(0, max_len):
             output, hidden, attn_weights = self.decoder(output, hidden, encoder_output)
+            print("output=========:",output)
             outputs[t] = output
             is_teacher = random.random() < teacher_forcing_ratio
             top1 = output.data.max(1)[1]
@@ -164,39 +179,42 @@ def evaluate(model, val_iter, vocab_size, DE, EN):
 def train(e, model, optimizer, training_set, vocab_size, grad_clip):
     model.train()
     total_loss = 0
-    counter = 0
-    for b, pair in enumerate(training_set):
-        counter += 1
-        print(counter)
-        src = torch.from_numpy(pair[0]).type("torch.FloatTensor")
-        trg = torch.from_numpy(pair[1]).squeeze(1).type("torch.FloatTensor")
-        print("trg_size: =============", trg.size())
-        optimizer.zero_grad()
-        print(src.size())
-        output = model(src, trg)
+    with open("../tmp/log/loss.txt", "w+") as log:
+        for b, pair in enumerate(training_set):
+            src = torch.from_numpy(pair[0]).type("torch.FloatTensor")
+            trg = torch.from_numpy(pair[1]).squeeze(1).type("torch.FloatTensor")
+            # logging.info("trg_size: =============", trg.size())
+            optimizer.zero_grad()
+            # logging.info(src.size())
+            output = model(src, trg)
 
-        print("output:============", output)
-        print("output_type:==========", output.type())
-        print("vocab_size:============", vocab_size)
-        print(trg.contiguous().view(-1))
-        print(trg.contiguous().view(-1).size())
-        print(output.view(vocab_size, -1).size())
+            # logging.info("output:============", output)
+            # logging.info("output_type:==========", output.type())
+            # logging.info("vocab_size:============", vocab_size)
+            # logging.info(trg.contiguous().view(-1))
+            # logging.info(trg.contiguous().view(-1).size())
+            # logging.info(output.view(vocab_size, -1).size())
 
-        loss = F.nll_loss(
-            output.view(vocab_size, -1),
-            trg.contiguous().view(-1).type("torch.LongTensor"),
-        )
-        loss.requires_grad = True
-        loss.backward()
+            loss = F.nll_loss(
+                output.view(vocab_size, -1),
+                trg.contiguous().view(-1).type("torch.LongTensor"),
+            )
+            loss.requires_grad = True
+            loss.backward()
 
-        clip_grad_norm(model.parameters(), grad_clip)
-        optimizer.step()
-        total_loss += loss.data
-
-        if b % 100 == 0 and b != 0:
-            total_loss = total_loss / 100
-            print("[%d][loss:%5.2f][pp:%5.2f]" % (b, total_loss, math.exp(total_loss)))
-            total_loss = 0
+            clip_grad_norm_(model.parameters(), grad_clip)
+            optimizer.step()
+            total_loss += loss.data
+            if b % 100 == 0 and b != 0:
+                total_loss = total_loss / 100
+                # logging.info(
+                #     "[%d][loss:%5.2f][pp:%5.2f]" % (b, total_loss, math.exp(total_loss))
+                # )
+                log.write(
+                    f"[{str(b)}][loss:{str(total_loss)}][pp:{str(math.exp(total_loss))}]"
+                )
+                log.write("\n")
+                total_loss = 0
 
 
 def main():
@@ -208,7 +226,7 @@ def main():
     hidden_size = 512
     output_size = 53
 
-    print("[!] preparing dataset...")
+    logging.info("[!] preparing dataset...")
     # train_iter, val_iter, test_iter, DE, EN = load_dataset(args.batch_size)
     # de_size, en_size = len(DE.vocab), len(EN.vocab)
     # print(
@@ -222,7 +240,7 @@ def main():
     # )
     # print("[DE_vocab]:%d [en_vocab]:%d" % (de_size, en_size))
     training_set = np.load("../data/FR/train_seq2seq/train.npy", allow_pickle=True)
-    print("[!] Instantiating models...")
+    logging.info("[!] Instantiating models...")
 
     encoder = Encoder(input_size, hidden_size, n_layers=2, dropout=0.5)
     decoder = Decoder(hidden_size, output_size, n_layers=1, dropout=0.5)
@@ -233,6 +251,7 @@ def main():
     best_val_loss = None
     for e in range(1, args.epochs + 1):
         train(e, seq2seq, optimizer, training_set, output_size, args.grad_clip)
+        print(f"epoch:{e} finished")
         # val_loss = evaluate(seq2seq, val_iter, output_size, DE, EN)
         # print(
         #     "[Epoch:%d] val_loss:%5.3f | val_pp:%5.2fS"
@@ -252,13 +271,16 @@ def main():
 
 
 if __name__ == "__main__":
-    # try:
-    #     main()
-    # except KeyboardInterrupt as e:
-    #     print("[STOP]", e)
     input_size = 786
     hidden_size = 512
-    training_set = np.load("../data/train_seq2seq/train_2000.npy", allow_pickle=True)
+    epochs = 1
+
+    mode = "test"
+    data_f = "tmp"
+    starttime = datetime.datetime.now()
+
+    # training_set = np.load("../data/train_seq2seq/train_2000.npy", allow_pickle=True)
+    training_set = np.load("../tmp/train_seq2seq/train.npy", allow_pickle=True)
 
     output_size = training_set[0][1].shape[1]
     print(output_size)
@@ -270,12 +292,16 @@ if __name__ == "__main__":
     optimizer = optim.Adam(seq2seq.parameters(), lr=args.lr)
     print(seq2seq)
 
-    e = 1
-    training_set = np.load("../data/train_seq2seq/train_2000.npy", allow_pickle=True)
-    # print(type(training_set))
-    # print(training_set.shape)
-    # for pair in training_set:
-    #     print(pair[0].shape)
-    #     print(pair[1].shape)
-    #     break
-    train(e, seq2seq, optimizer, training_set, output_size, args.grad_clip)
+    for e in range(1, epochs + 1):
+        print(f"epoch:{e} started")
+        train(e, seq2seq, optimizer, training_set, output_size, args.grad_clip)
+        print(f"epoch:{e} finished")
+
+    t = time.strftime("%Y-%m-%d_%H_%M_%S", time.localtime(time.time()))
+    # TODO : save model
+    # torch.save(
+    #     seq2seq.state_dict(), f"../models/{mode}/{data_f}_seq2seq_{t}_{epochs}.pt"
+    # )
+    # torch.save(seq2seq, f"../models/{mode}/{data_f}_seq2seq_{t}_{epochs}.pt")
+    endtime = datetime.datetime.now()
+    print((endtime - starttime).seconds)

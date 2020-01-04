@@ -1,6 +1,7 @@
 import os
 import sys
-from pprint import pprint
+import logging
+
 sys.path.append("./utils")
 
 import numpy as np
@@ -35,8 +36,19 @@ POS_DIC = {
 
 
 class Corpus:
-    def __init__(self, corpus):
+    def __init__(self, corpus, corpus_type, length_threshold=" "):
         self.corpus = corpus
+        self.corpus_type = corpus_type
+        self.length_threshold = length_threshold
+        self.ignores = list()
+        self.sentences = self.get_sentences()
+
+    @property
+    def max_length(self):
+        max_ = list()
+        for sent in self.sentences:
+            max_.append(len(sent))
+        return max(max_)
 
     def __len__(self):
         return len(self.sentences)
@@ -53,11 +65,18 @@ class Corpus:
         if 0 <= key <= len(self.corpus):
             del self.sentences[key]
 
-    @property
-    def sentences(self):
+
+    def get_sentences(self):
         sentences = list()
         for idx, item in enumerate(self.tsv_):
-            sentences.append(Sentence(self.corpus, idx, item))
+            sent = Sentence(idx, item)
+            if self.length_threshold is not " ":
+                if len(sent) <= self.length_threshold:
+                    sentences.append(sent)
+                else:
+                    self.ignores.append(idx)
+            else:
+                sentences.append(sent)
         return sentences
 
     @property
@@ -67,11 +86,6 @@ class Corpus:
         return tsv_
 
     @property
-    def max_length_sent(self):
-        lengths = [sent.length for sent in self.sentences]
-        return max(lengths)
-
-    @property
     def vocabs(self):
         vocabs = set()
         for sent in self.sentences:
@@ -79,16 +93,19 @@ class Corpus:
         return vocabs
 
 
-class Sentence(Corpus):
-    def __init__(self, corpus, sent_id, item):
-        super().__init__(corpus)
+class Sentence:
+    def __init__(self, sent_id, item):
         self.sent_id = sent_id
         self.item = item
-        self.length = len(self.tokens[0])
+
+    def __len__(self):
+        return len(self.tokens[0])
 
     @property
     def tokens(self):
-        tokens = [[token["FORM"] for token in self.item.words]]
+        tokens = [
+            [token["FORM"] for token in self.item.words if "-" not in token["ID"]]
+        ]
         return tokens
 
     @property
@@ -146,53 +163,58 @@ class Preprocessing:
     def __init__(self, corpus):
         self.corpus = corpus
 
-    def save_train(self, save_to):
-        max_length = self.corpus.max_length_sent
-        print(max_length)
+    def save_vectors(self, save_to):
+        max_length = self.corpus.max_length
+        corpus_type = self.corpus.corpus_type
+        length_threshold = self.corpus.length_threshold
         length = len(self.corpus)
-        print(length)
         sentences = self.corpus.sentences
         bert = BertWordEmbedding()
-        # train = np.empty((0, 53, 786))
         train = list()
-        # print(embedding.shape)
         counter = 0
         with BertServer(bert.start_args):
             with BertClient() as client:
-                for sent in sentences:
-                    vector = sent.get_vector(client, bert)
-                    print(sent.labels)
-                    labels = np.pad(
-                        sent.labels,
-                        (0, max_length - vector.shape[0]),
-                        mode="constant",
-                        constant_values=0,
-                    )  # padding  0.
-                    # for solving the broadcast problem
-                    labels = np.expand_dims(labels, axis=0)
-                    print("trg_size:=============", labels.shape)
-                    break
-                    vector = np.pad(
-                        vector,
-                        [(0, max_length - vector.shape[0]), (0, 0)],
-                        mode="constant",
-                        constant_values=0,
-                    )  # padding  0.
-                    train.append((vector, labels))
-                    counter += 1
-                    print(f"sentence id:=================={counter}")
-                    if counter % 2000 == 0 or counter == length:
-                        print(f"training set{counter} is done ===========")
-                        save_to = save_to +"_"+ str(counter)
-                        np.save(save_to, train)
-                        train = list()
-        # print(embedding.shape)
-        # TODO show to the prof.
-        # with open("../tmp/log_embedding.txt", "w+") as f:
-        #     print(train, file=f)
-        # print("training set is done ===========")
-        # np.save(save_to, train)  # np.load(outfile, allow_pickle=True)
-        # return train
+                if corpus_type == "train":
+                    for sent in sentences:
+                        vector = sent.get_vector(client, bert)
+                        labels = np.pad(
+                            sent.labels,
+                            (0, length_threshold - vector.shape[0]),
+                            mode="constant",
+                            constant_values=0,
+                        )  # padding  0.
+                        # for solving the broadcast problem
+                        labels = np.expand_dims(labels, axis=0)
+                        vector = np.pad(
+                            vector,
+                            [(0, length_threshold - vector.shape[0]), (0, 0)],
+                            mode="constant",
+                            constant_values=0,
+                        )  # padding  0.
+                        train.append((vector, labels))
+                        counter += 1
+                        logging.info(f"sentence id:=================={counter}")
+                        if counter % 2000 == 0 or counter == length:
+                            logging.info(f"training set{counter} is done ===========")
+                            save_to = save_to + "_" + str(counter)
+                            np.save(save_to, np.asarray(train))
+                            train = list()
+                elif corpus_type == "test":
+                    test = list()
+                    for sent in sentences:
+                        vector = sent.get_vector(client, bert)
+                        vector = np.pad(
+                            vector,
+                            [(0, length_threshold - vector.shape[0]), (0, 0)],
+                            mode="constant",
+                            constant_values=0,
+                        )
+                        test.append(vector)
+                    test = np.asarray(test)
+                    np.save(save_to, test)
+                    # TODO: break for just 3000
+
+        logging.info("training set is done ===========")
 
     def save_vocabs(self, save_to):
         vocabs = self.corpus.vocabs
@@ -241,39 +263,16 @@ class Preprocessing:
 
 
 if __name__ == "__main__":
-    corpus = "../data/FR/train.cupt"
-    cps = Corpus(corpus)
-    # print(cps.max_length_sent)
-    # sentences = cps.sentences
-    # bert = BertWordEmbedding()
-    # log = open("log.txt", "a+")
-    # with BertServer(bert.start_args):
-    #     with BertClient() as client:
-    #         for idx, item in enumerate(cps.tsv_):
-    #             sent = Sentence(corpus, idx, item)
-    #             vector = sent.get_vector(client, bert)
-    #             print("Tokens:\n", sent.tokens, file=log)
-    #             print("Len of Tokens:\n", len(sent.tokens[0]), file=log)
-    #             print("MWE labels:\n", sent.labels, file=log)
-    #             print("label length:\n", len(sent.labels), file=log)
-    #             print("Vector shape:\n", vector.shape, file=log)
-    pre = Preprocessing(cps)
-    save_to = "../data/train_seq2seq/train"
-    pre.save_train(save_to)
-    # c = np.load("../tmp/train_seq2seq/train.npy", allow_pickle=True)
+    MAX_LENGTH = 100
+    corpus = "../data/FR/test.blind.cupt"
+    # corpus = "../tmp/train_test.cupt"
 
-    # print(c)
-    # print(len(c))
-    # print(c[1])
-    # print(type(c))
-    # print(type(c[1]))
-    # print(c.shape[0])
-    # print(c[0].shape)
-    # print(c[0][1].squeeze())
-    # print(c[0][1].squeeze().shape)
-    # print(c[0][1].shape)
-    # print(c[0][0].shape)
-    # pre.save_vocabs(save_to)
-    # dic = pre.get_vocabs(save_to)
-    # print(type(dic))
-    # print(dic)
+    corpus_type = "test"
+    cps = Corpus(corpus, corpus_type, MAX_LENGTH)
+    print(cps.ignores)
+    print(len(cps))
+    pre = Preprocessing(cps)
+    # save_to = "../data/train_seq2seq/train"
+    save_to = "../data/train_seq2seq/test.blind"
+    pre.save_vectors(save_to)
+

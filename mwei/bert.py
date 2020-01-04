@@ -1,4 +1,3 @@
-
 from bert_serving.server.helper import get_args_parser
 from bert_serving.server.helper import get_shutdown_parser
 from bert_serving.server import BertServer
