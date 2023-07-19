@@ -55,8 +55,8 @@ class Main(object):
                 prefix = parallel_statlines[0].prefix
                 merged = self.merge_statlines(parallel_statlines)
 
-                if strtype == 'PRF':
-                    if self.args.operation in ['avg', 'avg+stddev']:
+                if self.args.operation in ['avg', 'avg+stddev']:
+                    if strtype == 'PRF':
                         # Re-calculate F1 based on precision and recall
                         prec, recall = [float(v.split('=')[-1].split('(')[0]) for v in merged[:2]]
                         merged[-1] = format_float((2*prec*recall)/((prec+recall) or 1))
@@ -65,7 +65,13 @@ class Main(object):
                 pairs = zip(statnames, merged)
                 fmt = "{}={}" if strtype == "PRF" else "{}={}%"
                 averages = " ".join(fmt.format(p[0], BRACES.format(p[1])) for p in pairs)
-                print(prefix, averages, FRACT.format(" @({}/{})".format(len(parallel_statlines), len(all_blocks))))
+                print(
+                    prefix,
+                    averages,
+                    FRACT.format(
+                        f" @({len(parallel_statlines)}/{len(all_blocks)})"
+                    ),
+                )
             print()
 
 
@@ -92,7 +98,7 @@ class Main(object):
             stddev = "inf"
             if len(scores) > 1:
                 stddev = format_float(math.sqrt(sumsq / (len(scores)-1 or 1)))
-            return "{}(±{})".format(format_float(avg), stddev)
+            return f"{format_float(avg)}(±{stddev})"
         elif self.args.operation == 'list':
             return "[" + ",".join(format_float(s) for s in scores) + "]"
         else:
@@ -106,7 +112,7 @@ class Block:
     | * Tok-based: P=1073/1087=0.9871 R=1073/1087=0.9871 F=0.9871   <-- prefix2statline["* Tok-based:"]
     """
     def __init__(self, text: str):
-        if not "\n" in text:
+        if "\n" not in text:
             exit("ERROR: Empty block: {!r}".format(text))
 
         self.title, rest = text.split("\n", 1)
@@ -147,7 +153,7 @@ def uniq(things: list):
     r"""Yield the first occurrence of each element."""
     seen = set()
     for thing in things:
-        if not thing in seen:
+        if thing not in seen:
             yield thing
         seen.add(thing)
 

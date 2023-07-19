@@ -29,8 +29,7 @@ class BertWordEmbedding:
         self.shut_args = get_shutdown_parser().parse_args(SHUT_ARGS)
 
     def vectorize(self, client, tokens):
-        vecs = np.squeeze(client.encode(tokens, is_tokenized=True))[1:-1]
-        return vecs
+        return np.squeeze(client.encode(tokens, is_tokenized=True))[1:-1]
 
 
 if __name__ == "__main__":

@@ -26,10 +26,10 @@ class Main:
         for sentno, block_text in enumerate(self.iter_blocks(), 1):
             if "# sent_id = " in block_text:
                 block_text = block_text.replace('# sent_id = ', '# source_sent_id = . . ')
-            if not "# source_sent_id =" in block_text:
-                print("# source_sent_id = . . dummy-{}".format(sentno))
+            if "# source_sent_id =" not in block_text:
+                print(f"# source_sent_id = . . dummy-{sentno}")
 
-            if not "# text =" in block_text:
+            if "# text =" not in block_text:
                 print("# text = dummy")
 
             for line in block_text.split("\n"):

@@ -161,7 +161,7 @@ def evaluate(model, val_iter, vocab_size, DE, EN):
     model.eval()
     pad = EN.vocab.stoi["<pad>"]
     total_loss = 0
-    for b, batch in enumerate(val_iter):
+    for batch in val_iter:
         src, len_src = batch.src
         trg, len_trg = batch.trg
         src = Variable(src.data.cuda(), volatile=True)

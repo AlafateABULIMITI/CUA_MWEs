@@ -299,14 +299,14 @@ class Munkres:
         self.marked = None
         self.path = None
 
-    def make_cost_matrix(profit_matrix, inversion_function):
+    def make_cost_matrix(self, inversion_function):
         """
         **DEPRECATED**
 
         Please use the module function ``make_cost_matrix()``.
         """
         import munkres
-        return munkres.make_cost_matrix(profit_matrix, inversion_function)
+        return munkres.make_cost_matrix(self, inversion_function)
 
     make_cost_matrix = staticmethod(make_cost_matrix)
 
@@ -371,8 +371,8 @@ class Munkres:
         self.n = len(self.C)
         self.original_length = len(cost_matrix)
         self.original_width = len(cost_matrix[0])
-        self.row_covered = [False for i in range(self.n)]
-        self.col_covered = [False for i in range(self.n)]
+        self.row_covered = [False for _ in range(self.n)]
+        self.col_covered = [False for _ in range(self.n)]
         self.Z0_r = 0
         self.Z0_c = 0
         self.path = self.__make_matrix(self.n * 2, 0)
@@ -410,10 +410,7 @@ class Munkres:
 
     def __make_matrix(self, n, val):
         """Create an *n*x*n* matrix, populating it with the specific value."""
-        matrix = []
-        for i in range(n):
-            matrix += [[val for j in range(n)]]
-        return matrix
+        return [[val for _ in range(n)] for _ in range(n)]
 
     def __step1(self):
         """
@@ -465,12 +462,7 @@ class Munkres:
                     self.col_covered[j] = True
                     count += 1
 
-        if count >= n:
-            step = 7 # done
-        else:
-            step = 4
-
-        return step
+        return 7 if count >= n else 4
 
     def __step4(self):
         """
@@ -563,8 +555,7 @@ class Munkres:
         for i in range(self.n):
             for j in range(self.n):
                 if (not self.row_covered[i]) and (not self.col_covered[j]):
-                    if minval > self.C[i][j]:
-                        minval = self.C[i][j]
+                    minval = min(minval, self.C[i][j])
         return minval
 
     def __find_a_zero(self):
@@ -598,39 +589,21 @@ class Munkres:
         Find the first starred element in the specified row. Returns
         the column index, or -1 if no starred element was found.
         """
-        col = -1
-        for j in range(self.n):
-            if self.marked[row][j] == 1:
-                col = j
-                break
-
-        return col
+        return next((j for j in range(self.n) if self.marked[row][j] == 1), -1)
 
     def __find_star_in_col(self, col):
         """
         Find the first starred element in the specified row. Returns
         the row index, or -1 if no starred element was found.
         """
-        row = -1
-        for i in range(self.n):
-            if self.marked[i][col] == 1:
-                row = i
-                break
-
-        return row
+        return next((i for i in range(self.n) if self.marked[i][col] == 1), -1)
 
     def __find_prime_in_row(self, row):
         """
         Find the first prime element in the specified row. Returns
         the column index, or -1 if no starred element was found.
         """
-        col = -1
-        for j in range(self.n):
-            if self.marked[row][j] == 2:
-                col = j
-                break
-
-        return col
+        return next((j for j in range(self.n) if self.marked[row][j] == 2), -1)
 
     def __convert_path(self, path, count):
         for i in range(count+1):
@@ -686,10 +659,7 @@ def make_cost_matrix(profit_matrix, inversion_function):
     :rtype: list of lists
     :return: The converted matrix
     """
-    cost_matrix = []
-    for row in profit_matrix:
-        cost_matrix.append([inversion_function(value) for value in row])
-    return cost_matrix
+    return [[inversion_function(value) for value in row] for row in profit_matrix]
 
 def print_matrix(matrix, msg=None):
     """
