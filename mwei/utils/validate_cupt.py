@@ -29,7 +29,7 @@ class Main:
 
         with self.args.input as f:
             header = next(f)
-            if not "global.columns =" in header:
+            if "global.columns =" not in header:
                 exit("ERROR: first line must specify global.columns")
             colnames = header.split("=")[-1].strip().split()
             try:
@@ -44,17 +44,22 @@ class Main:
                 else:
                     fields = line.strip().split("\t")
                     if len(fields) != len(colnames):
-                        exit("ERROR: line {} has only {} columns (expected {})" \
-                             .format(lineno, len(fields), len(colnames)))
+                        exit(
+                            f"ERROR: line {lineno} has only {len(fields)} columns (expected {len(colnames)})"
+                        )
 
                     token = dict(zip(colnames, fields))
                     for k, v in token.items():
                         if v == "":
-                            exit("ERROR: line {} has empty {} field".format(lineno, k))
+                            exit(f"ERROR: line {lineno} has empty {k} field")
                         if k == "PARSEME:MWE" and self.args.underspecified_mwes and v != "_":
-                            exit('ERROR: line {} has a specific PARSEME:MWE value (expecting the underspecified "_")'.format(lineno))
+                            exit(
+                                f'ERROR: line {lineno} has a specific PARSEME:MWE value (expecting the underspecified "_")'
+                            )
                         if k == "PARSEME:MWE" and not self.args.underspecified_mwes and v == "_":
-                            exit("ERROR: line {} has an unexpected PARSEME:MWE value (if this is blind data, use --underspecified)".format(lineno))
+                            exit(
+                                f"ERROR: line {lineno} has an unexpected PARSEME:MWE value (if this is blind data, use --underspecified)"
+                            )
 
                         if k == "PARSEME:MWE" and v not in "*_":
                             for mwe in v.split(";"):
@@ -66,20 +71,21 @@ class Main:
                                         mweid = int(mweid)
                                     except ValueError:
                                         exit("ERROR: line {} has MWE code {!r} (expecting " \
-                                             "an integer like '3' a pair like '3:LVC.full')" \
-                                             .format(lineno, mwe))
+                                                 "an integer like '3' a pair like '3:LVC.full')" \
+                                                 .format(lineno, mwe))
                                     else:
                                         if mweid in mweid2categ:
-                                            exit("ERROR: line {} redefines a category ('{}:{}' => '{}:{}')" \
-                                                 .format(lineno, mweid, mweid2categ[mweid], mweid, mwecateg))
+                                            exit(
+                                                f"ERROR: line {lineno} redefines a category ('{mweid}:{mweid2categ[mweid]}' => '{mweid}:{mwecateg}')"
+                                            )
                                         if mwecateg not in VALID_CATEGS and not mwecateg.startswith('LS.'):
-                                            exit("ERROR: line {} refers to an invalid category name ('{}')" \
-                                                 .format(lineno, mwecateg))
+                                            exit(f"ERROR: line {lineno} refers to an invalid category name ('{mwecateg}')")
                                         mweid2categ[mweid] = mwecateg
                                 else:
                                     if mweid not in mweid2categ:
-                                        exit("ERROR: line {} refers to MWE '{}' without giving it a category right away" \
-                                             .format(lineno, mweid))
+                                        exit(
+                                            f"ERROR: line {lineno} refers to MWE '{mweid}' without giving it a category right away"
+                                        )
             print("Validated: no errors.", file=sys.stderr)
 
 

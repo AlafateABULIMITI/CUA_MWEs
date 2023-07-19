@@ -73,12 +73,9 @@ class Evaluation:
         return vecs
 
     def _predict(self, vectors):
-        mwei_preds_list = list()
         preds = self.model.predict(vectors)
         predicts = K.get_value(K.argmax(preds, axis=2))
-        for pred in predicts:
-            mwei_preds_list.append(self._transform_preds(pred))
-        return mwei_preds_list
+        return [self._transform_preds(pred) for pred in predicts]
 
     def _transform_preds(self, preds):
         counter = 0
@@ -107,16 +104,14 @@ class Evaluation:
             with open(self.result, "w+", encoding="utf-8") as save_to:
                 for sent_idx, tokenlist in enumerate(parse_incr(data_file)):
                     for preds in mwei_preds_list:
-                        if sent_idx not in self.eval_corpus.ignores:
-                            for idx, token in enumerate(tokenlist):
-                                # print(token)
-                                if isinstance(token["id"], tuple):
-                                    token["parseme:mwe"] = "*"
-                                else:
-                                    token["parseme:mwe"] = preds[token["id"] - 1]
-                        else:
-                            for idx, token in enumerate(tokenlist):
-                                token["parseme:mwe"] = "*"
+                        for token in tokenlist:
+                            token["parseme:mwe"] = (
+                                "*"
+                                if sent_idx not in self.eval_corpus.ignores
+                                and isinstance(token["id"], tuple)
+                                or sent_idx in self.eval_corpus.ignores
+                                else preds[token["id"] - 1]
+                            )
                     a = tokenlist.serialize()
                     save_to.write(a)
         return a

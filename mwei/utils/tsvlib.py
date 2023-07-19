@@ -82,8 +82,7 @@ class TSVSentence:
         for c in self.contractions:
             index2contractions[c.contraction_range().start].append(c)
         for i, token in enumerate(self.words):
-            for c in index2contractions[i]:
-                yield c
+            yield from index2contractions[i]
             yield token
 
     def mwe_infos(self):
@@ -107,8 +106,7 @@ class TSVSentence:
         for c in self.contractions:
             mustwarn = False  # warning appears once per contraction...
             for i_subtoken in c.contraction_range():
-                more_codes = c.mwe_codes()
-                if more_codes:
+                if more_codes := c.mwe_codes():
                     mustwarn = True  # ...not once per contraction element
                     all_codes = self.words[i_subtoken].mwe_codes()
                     all_codes.update(more_codes)
@@ -119,9 +117,7 @@ class TSVSentence:
                     self.words[i_subtoken]["PARSEME:MWE"] = ";".join(sorted(all_codes))
             if mustwarn:  # warning appears here
                 warn(
-                    "Contraction {} ({}) should not contain MWE annotation {} ".format(
-                        c["ID"], c["FORM"], c["PARSEME:MWE"]
-                    )
+                    f'Contraction {c["ID"]} ({c["FORM"]}) should not contain MWE annotation {c["PARSEME:MWE"]} '
                 )
 
     def iter_mwe_fields_and_normalizedindexes(
@@ -241,7 +237,7 @@ class TSVToken(collections.UserDict):
         return range(int(a) - 1, int(b))
 
     def __missing__(self, key):
-        raise KeyError("""Field {} is underspecified ("_" or missing)""".format(key))
+        raise KeyError(f"""Field {key} is underspecified ("_" or missing)""")
 
 
 def mwe_code_to_id_categ(mwe_code):
@@ -258,7 +254,7 @@ def mwe_code_to_id_categ(mwe_code):
 def iter_tsv_sentences(fileobj):
     r"""Yield `TSVSentence` instances for all sentences in the underlying PARSEME TSV file."""
     header = next(fileobj)
-    if not "global.columns" in header:
+    if "global.columns" not in header:
         exit(
             "ERROR: {}: file is not in the required format: missing global.columns header".format(
                 os.path.basename(fileobj.name)
@@ -279,16 +275,13 @@ def iter_tsv_sentences(fileobj):
             fields = line.strip().split("\t")
             if len(fields) != len(colnames):
                 raise Exception(
-                    "Line has {} columns, but header specifies {}".format(
-                        len(fields), len(colnames)
-                    )
+                    f"Line has {len(fields)} columns, but header specifies {len(colnames)}"
                 )
             data = {c: f for (c, f) in zip(colnames, fields) if f != UNDERSP}
             sentence.append(TSVToken(lineno, data))
-        else:
-            if sentence:
-                yield sentence
-                sentence = None
+        elif sentence:
+            yield sentence
+            sentence = None
     if sentence:
         yield sentence
 
@@ -327,9 +320,7 @@ def warn(message, *, warntype="WARNING", position=None, **format_args):
     _WARNED[message] += 1
     if _WARNED[message] <= _MAX_WARNINGS:
         if position is None:
-            position = (
-                "{}:{}: ".format(last_filename, last_lineno) if last_filename else ""
-            )
+            position = f"{last_filename}:{last_lineno}: " if last_filename else ""
         msg_list = message.format(**format_args).split("\n")
         if _WARNED[message] == _MAX_WARNINGS:
             msg_list.append("(Skipping following warnings of this type)")
@@ -347,11 +338,9 @@ def excepthook(exctype, value, tb):
     global last_filename
     if value and last_lineno:
         last_filename = last_filename or "???"
-        err_msg = "===> ERROR when reading {} (line {})".format(
-            last_filename, last_lineno
-        )
+        err_msg = f"===> ERROR when reading {last_filename} (line {last_lineno})"
         if COLOR_STDERR:
-            err_msg = "\x1b[31m{}\x1b[m".format(err_msg)
+            err_msg = f"\x1b[31m{err_msg}\x1b[m"
         print(err_msg, file=sys.stderr)
     return sys.__excepthook__(exctype, value, tb)
 

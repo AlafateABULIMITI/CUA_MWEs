@@ -16,7 +16,7 @@ with args.input as f:
     sentences = list(tsvlib.iter_tsv_sentences(f))
     print(len(sentences))
     # input()
-    max_len = list()
+    max_len = []
     for sentence in sentences:
         # print("\n-------------------------------")
         # print("NEW SENTENCE")

@@ -40,14 +40,12 @@ class Corpus:
         self.corpus = corpus
         self.corpus_type = corpus_type
         self.length_threshold = length_threshold
-        self.ignores = list()
+        self.ignores = []
         self.sentences = self.get_sentences()
 
     @property
     def max_length(self):
-        max_ = list()
-        for sent in self.sentences:
-            max_.append(len(sent))
+        max_ = [len(sent) for sent in self.sentences]
         return max(max_)
 
     def __len__(self):
@@ -67,16 +65,17 @@ class Corpus:
 
 
     def get_sentences(self):
-        sentences = list()
+        sentences = []
         for idx, item in enumerate(self.tsv_):
             sent = Sentence(idx, item)
-            if self.length_threshold is not " ":
-                if len(sent) <= self.length_threshold:
-                    sentences.append(sent)
-                else:
-                    self.ignores.append(idx)
-            else:
+            if (
+                self.length_threshold is not " "
+                and len(sent) <= self.length_threshold
+                or self.length_threshold is " "
+            ):
                 sentences.append(sent)
+            else:
+                self.ignores.append(idx)
         return sentences
 
     @property
@@ -103,25 +102,21 @@ class Sentence:
 
     @property
     def tokens(self):
-        tokens = [
+        return [
             [token["FORM"] for token in self.item.words if "-" not in token["ID"]]
         ]
-        return tokens
 
     @property
     def vocabs(self):
-        vocabs = set(self.tokens[0])
-        return vocabs
+        return set(self.tokens[0])
 
     @property
     def _pos_s(self):
-        pos_s = [token["UPOS"] for token in self.item.words]
-        return pos_s
+        return [token["UPOS"] for token in self.item.words]
 
     @property
     def _mwe_labels(self):
-        labels = [token["PARSEME:MWE"] for token in self.item.words]
-        return labels
+        return [token["PARSEME:MWE"] for token in self.item.words]
 
     @property
     def labels(self):
@@ -141,7 +136,7 @@ class Sentence:
     @property
     def _pos_vec(self):
         pos_v = np.empty((0, 18), dtype=np.int)
-        for idx, pos in enumerate(self._pos_s):
+        for pos in self._pos_s:
             vec = np.zeros((1, 18), dtype=np.int)
             index = POS_DIC.get(pos)
             vec[0][index] = 1
@@ -149,14 +144,12 @@ class Sentence:
         return pos_v
 
     def _bert_vec(self, client, bert):
-        bert_v = bert.vectorize(client, self.tokens)
-        return bert_v
+        return bert.vectorize(client, self.tokens)
 
     def get_vector(self, client, bert):
         pos_v = self._pos_vec
         bert_v = self._bert_vec(client, bert)
-        vector = np.hstack((bert_v, pos_v))
-        return vector
+        return np.hstack((bert_v, pos_v))
 
 
 class Preprocessing:
@@ -170,11 +163,24 @@ class Preprocessing:
         length = len(self.corpus)
         sentences = self.corpus.sentences
         bert = BertWordEmbedding()
-        train = list()
+        train = []
         counter = 0
         with BertServer(bert.start_args):
             with BertClient() as client:
-                if corpus_type == "train":
+                if corpus_type == "test":
+                    test = []
+                    for sent in sentences:
+                        vector = sent.get_vector(client, bert)
+                        vector = np.pad(
+                            vector,
+                            [(0, length_threshold - vector.shape[0]), (0, 0)],
+                            mode="constant",
+                            constant_values=0,
+                        )
+                        test.append(vector)
+                    test = np.asarray(test)
+                    np.save(save_to, test)
+                elif corpus_type == "train":
                     for sent in sentences:
                         vector = sent.get_vector(client, bert)
                         labels = np.pad(
@@ -196,24 +202,9 @@ class Preprocessing:
                         logging.info(f"sentence id:=================={counter}")
                         if counter % 2000 == 0 or counter == length:
                             logging.info(f"training set{counter} is done ===========")
-                            save_to = save_to + "_" + str(counter)
+                            save_to = f"{save_to}_{counter}"
                             np.save(save_to, np.asarray(train))
-                            train = list()
-                elif corpus_type == "test":
-                    test = list()
-                    for sent in sentences:
-                        vector = sent.get_vector(client, bert)
-                        vector = np.pad(
-                            vector,
-                            [(0, length_threshold - vector.shape[0]), (0, 0)],
-                            mode="constant",
-                            constant_values=0,
-                        )
-                        test.append(vector)
-                    test = np.asarray(test)
-                    np.save(save_to, test)
-                    # TODO: break for just 3000
-
+                            train = []
         logging.info("training set is done ===========")
 
     def save_vocabs(self, save_to):
@@ -223,7 +214,7 @@ class Preprocessing:
                 wf.write(vocab + "\n")
 
     def get_vocabs(self, to_save):
-        vocabs_dic = dict()
+        vocabs_dic = {}
         with open(to_save, "r") as rf:
             lines = rf.readlines()
             for idx, line in enumerate(lines):
@@ -250,7 +241,7 @@ class Preprocessing:
                 wf.write(idx_tokens_str + "\t" + labels_str + "\n")
 
     def tokens_2_index(self, dic, tokens):
-        index_list = list()
+        index_list = []
         for token in tokens:
             idx = dic.get(token)
             index_list.append(idx)

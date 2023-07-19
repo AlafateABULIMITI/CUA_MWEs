@@ -82,12 +82,7 @@ class Main(object):
     def run(self):
         if self.args.debug:
             print(
-                "DEBUG:  LEGEND:  {} {} {} {}".format(
-                    GOLDPRED_FMT[(False, False)].format("normal-text"),
-                    GOLDPRED_FMT[(True, False)].format("gold-only"),
-                    GOLDPRED_FMT[(False, True)].format("pred-only"),
-                    GOLDPRED_FMT[(True, True)].format("gold-pred-matched"),
-                )
+                f'DEBUG:  LEGEND:  {GOLDPRED_FMT[False, False].format("normal-text")} {GOLDPRED_FMT[True, False].format("gold-only")} {GOLDPRED_FMT[False, True].format("pred-only")} {GOLDPRED_FMT[True, True].format("gold-pred-matched")}'
             )
             print("DEBUG:")
 
@@ -138,7 +133,7 @@ class Main(object):
                     categ2stats[category],
                     g,
                     p,
-                    debug_header="Category {}:".format(category or UNLABELED),
+                    debug_header=f"Category {category or UNLABELED}:",
                 )
 
             for continuity in [True, False]:
@@ -160,9 +155,7 @@ class Main(object):
                     multitokenness2stats[multitokenness],
                     g,
                     p,
-                    debug_header="{}-token:".format(
-                        "Multi" if multitokenness else "Single"
-                    ),
+                    debug_header=f'{"Multi" if multitokenness else "Single"}-token:',
                 )
 
             if self.args.train_file:
@@ -178,9 +171,7 @@ class Main(object):
                         field_whetherseen2stats[("LEMMA", whetherseen)],
                         g,
                         p,
-                        debug_header="{}-in-train:".format(
-                            "Seen" if whetherseen else "Unseen"
-                        ),
+                        debug_header=f'{"Seen" if whetherseen else "Unseen"}-in-train:',
                     )
 
                 for variantness in [True, False]:
@@ -196,9 +187,7 @@ class Main(object):
                         field_variantness2stats[("LEMMA", "FORM", variantness)],
                         g,
                         p,
-                        debug_header="{}-train:".format(
-                            "Variant-of" if variantness else "Identical-to"
-                        ),
+                        debug_header=f'{"Variant-of" if variantness else "Identical-to"}-train:',
                     )
 
             if self.args.debug:
@@ -211,7 +200,7 @@ class Main(object):
 
         print("## Per-category evaluation (partition of Global)")
         for category in sorted(categ2stats, key=str):
-            prefix = "{}: ".format(category or UNLABELED)
+            prefix = f"{category or UNLABELED}: "
             categ2stats[category].print_mwebased_proportion(prefix, baseline=base_stats)
             categ2stats[category].print_stats(prefix)
         print()
@@ -227,7 +216,7 @@ class Main(object):
 
         print("## Number of tokens (partition of Global)")
         for multitokenness in [True, False]:
-            prefix = "{}-token: ".format("Multi" if multitokenness else "Single")
+            prefix = f'{"Multi" if multitokenness else "Single"}-token: '
             multitokenness2stats[multitokenness].print_mwebased_proportion(
                 prefix, baseline=base_stats
             )
@@ -245,7 +234,7 @@ class Main(object):
             else:
                 print("## Whether seen in train (partition of Global)")
                 for whetherseen in [True, False]:
-                    prefix = "{}-in-train: ".format("Seen" if whetherseen else "Unseen")
+                    prefix = f'{"Seen" if whetherseen else "Unseen"}-in-train: '
                     field_whetherseen2stats[
                         ("LEMMA", whetherseen)
                     ].print_mwebased_proportion(prefix, baseline=base_stats)
@@ -256,9 +245,7 @@ class Main(object):
 
                 print("## Whether identical to train (partition of Seen-in-train)")
                 for variantness in [True, False]:
-                    prefix = "{}-train: ".format(
-                        "Variant-of" if variantness else "Identical-to"
-                    )
+                    prefix = f'{"Variant-of" if variantness else "Identical-to"}-train: '
                     field_variantness2stats[
                         ("LEMMA", "FORM", variantness)
                     ].print_mwebased_proportion(
@@ -305,7 +292,7 @@ class Main(object):
 
             triples.append(
                 [
-                    "t{}".format(i + 1),
+                    f"t{i + 1}",
                     ";".join(sorted(tok_g.mwe_codes())),
                     ";".join(sorted(tok_p_mwe_codes)),
                     tok_g.get("FORM", "_"),
@@ -319,11 +306,11 @@ class Main(object):
         print("DEBUG: +============================================================")
 
     def print_debug_tokensets(self, debug_header, name, mwes):
-        print("DEBUG: | {} {} = {}".format(debug_header, name, mwes2t(mwes)))
+        print(f"DEBUG: | {debug_header} {name} = {mwes2t(mwes)}")
 
     def mwe_categs(self, sent: tsvlib.TSVSentence) -> set:
         r"""Get the set of MWE categories referenced in sentence."""
-        return set(mweinfo.category for mweinfo in sent.mwe_infos().values())
+        return {mweinfo.category for mweinfo in sent.mwe_infos().values()}
 
     def mweinfos_per_categ(self, mweinfos: list, categ: str):
         r"""Return a sublist of MWEInfo instances for given category."""
@@ -343,7 +330,7 @@ class Main(object):
         NOTE: we group identical MWEs as a single unit, as per the Shared Task meeting's discussion
         regarding a set-based definition of MWEs.
         """
-        tokensets = set(frozenset(i + 1 for i in m.token_indexes) for m in mweinfos)
+        tokensets = {frozenset(i + 1 for i in m.token_indexes) for m in mweinfos}
         return list(sorted(tokensets, key=lambda tokenset: list(sorted(tokenset))))
 
     def check_eof(self):
@@ -397,23 +384,23 @@ class SeenInfo:
         Example for field_name=="LEMMA":
           {{(take, 1), (bath, 3)}, {(there, 1), (be, 2)}}
         """
-        return set(
+        return {
             fieldindex_set
             for sentence in sents
             for fieldindex_set in sentence.iter_mwe_fields_and_normalizedindexes(
                 field_name
             )
-        )
+        }
 
     def _calc_mwe_field_sets(self, field_name: str):
         r"""Return a Set[Counter[field_value: str]]
         Example for field_name=="LEMMA":
           {{take, bath}, {look, up}, {there, be}, {to(2x), be(2x), or, not}}
         """
-        return set(
+        return {
             tsvlib.FrozenCounter(field for (field, index) in fieldindex_set)
             for fieldindex_set in self.mwe_fieldindex_sets[field_name]
-        )
+        }
 
     def mweinfo_per_whetherseen(
         self, mweinfos: list, field_name: str, whetherseen: bool
@@ -467,7 +454,7 @@ class SeenInfo:
 def mwe2t(mwe):
     r"""mwe2t(frozenset[int]) -> str
     Return a string representation such as "t1_t3_t4"."""
-    return "_".join("t{}".format(i) for i in sorted(mwe))
+    return "_".join(f"t{i}" for i in sorted(mwe))
 
 
 def mwes2t(mwes):
@@ -481,12 +468,11 @@ def pairing2t(pairing):
         "{"
         + ", ".join(
             sorted(
-                "{}=>{}".format(mwe2t(mwe1), mwe2t(mwe2))
+                f"{mwe2t(mwe1)}=>{mwe2t(mwe2)}"
                 for (mwe1, mwe2) in pairing.items()
             )
         )
-        + "}"
-    )
+    ) + "}"
 
 
 def error(message, **kwargs):
@@ -658,23 +644,23 @@ def tokbased_pairing(g_tokensets: list, p_tokensets: list, tractable: bool) -> d
     The value is a frozenset[int] (prediction token indexes).
     This dict maximizes the number of tokens in common between gold & pred.
     """
-    if tractable:  # Use O(n^3) algorithm
-        if not g_tokensets or not p_tokensets:
-            return {}
-        return ParsemeBipartiteGraph(g_tokensets, p_tokensets).mapping
-
-    else:  # Use O(n!) algorithm
-        g_tokensets += [frozenset()] * (len(p_tokensets) - len(g_tokensets))
-        p_tokensets += [frozenset()] * (len(g_tokensets) - len(p_tokensets))
-        best, best_count = {}, 0
-        for p_tokenset_permut in itertools.permutations(p_tokensets):
-            pairing = {
-                a: b for (a, b) in zip(g_tokensets, p_tokenset_permut) if a and b
-            }
-            pairing_count = sum(len(set(a) & set(b)) for (a, b) in pairing.items())
-            if pairing_count > best_count:
-                best, best_count = pairing, pairing_count
-        return best
+    if tractable:
+        return (
+            {}
+            if not g_tokensets or not p_tokensets
+            else ParsemeBipartiteGraph(g_tokensets, p_tokensets).mapping
+        )
+    g_tokensets += [frozenset()] * (len(p_tokensets) - len(g_tokensets))
+    p_tokensets += [frozenset()] * (len(g_tokensets) - len(p_tokensets))
+    best, best_count = {}, 0
+    for p_tokenset_permut in itertools.permutations(p_tokensets):
+        pairing = {
+            a: b for (a, b) in zip(g_tokensets, p_tokenset_permut) if a and b
+        }
+        pairing_count = sum(len(set(a) & set(b)) for (a, b) in pairing.items())
+        if pairing_count > best_count:
+            best, best_count = pairing, pairing_count
+    return best
 
 
 class ParsemeBipartiteGraph:
